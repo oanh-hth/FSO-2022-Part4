@@ -26,9 +26,25 @@ const mostBlogs = (blogs) => {
     return chosenAuthor
 }
 
+const mostLikes = (blogs) => {
+    let newBlogs = _.reduce(blogs, function(array, blog){
+		let { author, likes } = blog
+		let isExisted = _.find(array, blog => blog.author == author)
+		let obj = isExisted || { author, likes: 0 }
+		obj.likes += likes
+		if (!isExisted) {
+			array.push(obj)
+		}
+		return array
+	}, [])
+    let author = _.maxBy(newBlogs, blog => blog.likes)
+	return author
+}   
+
 module.exports = {
     dummy,
     totalLikes,
     favoriteBlog,
-    mostBlogs
+    mostBlogs,
+    mostLikes
 }
