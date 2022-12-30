@@ -20,13 +20,7 @@ const initialBlogs = [
     },
   ]
   
-  beforeEach(async () => {
-    await Blog.deleteMany({})
-    let blogObject = new Blog(initialBlogs[0])
-    await blogObject.save()
-    blogObject = new Blog(initialBlogs[1])
-    await blogObject.save()
-  })
+
 beforeEach(async () => {
 await Blog.deleteMany({})
 
@@ -109,7 +103,7 @@ test('a valid blog can be added', async () => {
     )
 })
 
-  test('blog without title added', async () => {
+test('blog without title added', async () => {
       const newBlog = {
         author: 'Hippo',
         url: 'acnn.net',
@@ -123,7 +117,36 @@ test('a valid blog can be added', async () => {
   
     const response = await api.get('/api/blogs')
     expect(response.body).toHaveLength(initialBlogs.length)
-  }, 100000)
+}, 100000)
+
+test('delete a single blog post', async () => {
+    const data = await Blog.find({})
+    const deleteBlog = data[0].id
+    
+  await api
+    .delete(`/api/blogs/${deleteBlog}`)
+    .expect(204)
+
+  const response = await api.get('/api/blogs')
+  expect(response.body).toHaveLength(initialBlogs.length - 1)
+})
+
+test('update an existing blogpost', async () => {
+    const data = await Blog.find({})
+    const updatedBlog = data[0]
+    updatedBlog.likes = 2
+
+    await api
+        .put(`/api/blogs/${updatedBlog.id}`)
+        .send(updatedBlog)
+        .expect('Content-Type', /application\/json/)
+
+    const response = await api.get('/api/blogs')
+    const item = response.body.find( item => item.likes === 2)
+    expect(response.body).toHaveLength(initialBlogs.length)
+    expect(item.likes).toBe(2)
+})
+
 
 afterAll(() => {
   mongoose.connection.close()
