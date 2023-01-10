@@ -1,9 +1,12 @@
 const mongoose = require('mongoose')
+const bcrypt = require('bcrypt')
 const supertest = require('supertest')
 const helper = require('./test_helper')
 const app = require('../app')
 const api = supertest(app)
 const Blog = require('../models/blogs')
+const User = require('../models/user')
+
 
 beforeEach(async () => {
     await Blog.deleteMany({})
@@ -48,6 +51,21 @@ describe('viewing a specific blog', () => {
 })
 
 describe('addition of a new blog', () => {
+    let headers
+    beforeEach(async () => {
+        let user = {
+            username: "root",
+            password: "sekret"
+       }
+        
+        const loginUser = await api
+            .post('/api/login')
+            .send(user)
+
+        headers = {
+        'Authorization': `bearer ${loginUser.body.token}`
+        }
+    })
     test('added a blog without likes', async () => {
         const newBlog = {
             title: 'A blog with no likes',
@@ -58,6 +76,7 @@ describe('addition of a new blog', () => {
         await api
             .post('/api/blogs')
             .send(newBlog)
+            .set(headers)
             .expect(201)
             .expect('Content-Type', /application\/json/)
     
@@ -80,6 +99,7 @@ describe('addition of a new blog', () => {
         await api
             .post('/api/blogs')
             .send(newBlog)
+            .set(headers)
             .expect(201)
             .expect('Content-Type', /application\/json/)
     
@@ -103,6 +123,7 @@ describe('addition of a new blog', () => {
         await api
           .post('/api/blogs')
           .send(newBlog)
+          .set(headers)
           .expect(400)
       
         const response = await helper.blogsInDb()
@@ -111,12 +132,28 @@ describe('addition of a new blog', () => {
 })
 
 describe('deletion of a blog', () => {
+    let headers
+    beforeEach(async () => {
+        let user = {
+            username: "root",
+            password: "sekret"
+       }
+        
+        const loginUser = await api
+            .post('/api/login')
+            .send(user)
+
+        headers = {
+        'Authorization': `bearer ${loginUser.body.token}`
+        }
+    })
     test('delete a single blog post', async () => {
         const data = await helper.blogsInDb()
         const deleteBlog = data[0].id
         
       await api
         .delete(`/api/blogs/${deleteBlog}`)
+        .set(headers)  
         .expect(204)
     
       const response = await helper.blogsInDb()

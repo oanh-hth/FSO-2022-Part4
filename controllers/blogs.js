@@ -2,7 +2,6 @@
 // create a new router object, then export the router, this will be available for all consumers
 const blogsRouter = require('express').Router()
 const Blog = require('../models/blogs')
-const User = require('../models/user')
 const jwt = require('jsonwebtoken')
 
 blogsRouter.get('/', async (request, response) => {
@@ -10,13 +9,6 @@ blogsRouter.get('/', async (request, response) => {
     response.json(blogs)
 })
 
-const getTokenFrom = request => {
-    const authorization = request.get('authorization')
-    if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
-      return authorization.substring(7)
-    }
-    return null
-}
 
 blogsRouter.get('/:id', async (request, response, next) => {
     const blog = await Blog.findById(request.params.id)
@@ -30,16 +22,12 @@ blogsRouter.get('/:id', async (request, response, next) => {
 
 blogsRouter.post('/', async (request, response, next) => {
     const body = request.body
-    console.log(body)
-    const token = getTokenFrom(request)
-    console.log(token)
-    const decodedToken = jwt.verify(token, process.env.SECRET)
-    if (!decodedToken.id) {
-        return response.status(401).json({ error: 'token missing or invalid' })
-    } 
-
-    const user = await User.findById(decodedToken.id)
-    console.log(user)
+    const user = request.user
+    if (!user) {
+        response.status(401).json({
+            error: 'token missing or invalid'
+        })
+    }
 
     const blog = new Blog({
         title: body.title,
@@ -57,9 +45,17 @@ blogsRouter.post('/', async (request, response, next) => {
 })
 
 blogsRouter.delete('/:id', async (request, response, next) => {
-    await Blog.findByIdAndRemove(request.params.id)
-    response.status(204).end()
-    
+    const user = request.user
+    if (!user) {
+        response.status(401).json({
+            error: 'token missing or invalid'
+        })
+    }
+    const blog = await Blog.findById(request.params.id)
+    if (blog.user.toString() === user._id.toString()) {
+        await Blog.deleteOne(blog)
+        response.status(204).end()
+    }  
 })
 
 blogsRouter.put('/:id', async (request, response, next) => {
