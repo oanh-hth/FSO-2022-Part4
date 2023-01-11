@@ -7,13 +7,28 @@ const api = supertest(app)
 const Blog = require('../models/blogs')
 const User = require('../models/user')
 
+beforeEach(async () => {
+    await User.deleteMany({})
+    const passwordHash = await bcrypt.hash('sekret', 10)
+    const user = new User({
+      username: 'root',
+      name: 'admin',
+      blogs: [],
+      passwordHash
+    })
+  
+    await user.save()
+  })
 
 beforeEach(async () => {
     await Blog.deleteMany({})
-
+    const users = await User.find({})
+    const user = users[0]
+    const id = user._id
     for (let blog of helper.initialBlogs) {
-        let blogObject = new Blog(blog)
+        let blogObject = new Blog({ ...blog, user: id.toString() })
         await blogObject.save()
+        user.blogs = user.blogs.concat(blogObject._id)
     }
 })
 
@@ -113,7 +128,7 @@ describe('addition of a new blog', () => {
         )
     })
     
-    test('blog without title added', async () => {
+    test('adding a blog without title', async () => {
           const newBlog = {
             author: 'Hippo',
             url: 'acnn.net',
@@ -128,6 +143,19 @@ describe('addition of a new blog', () => {
       
         const response = await helper.blogsInDb()
         expect(response).toHaveLength(helper.initialBlogs.length)
+    })
+
+    test('adding a blog if token is not provided', async () => {
+        const newBlog = {
+            title: 'A blog with no likes',
+            author: 'Anonymous',
+            url: 'butter.com'
+        }
+    
+        await api
+            .post('/api/blogs')
+            .send(newBlog)
+            .expect(401)
     })
 })
 
@@ -146,6 +174,7 @@ describe('deletion of a blog', () => {
         headers = {
         'Authorization': `bearer ${loginUser.body.token}`
         }
+        
     })
     test('delete a single blog post', async () => {
         const data = await helper.blogsInDb()
